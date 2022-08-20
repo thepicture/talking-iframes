@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MessageChannel and BroadcastChannel example</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
+      main {
+        display: grid;
+        height: 100vh;
+        grid-template-columns: 1fr 1fr;
+      }
+      iframe {
+        width: 100%;
+        height: inherit;
+      }
+
+      #resume-button {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <button id="resume-button" type="button">
+      To view MessageChannel and BroadcastChannel example, you can click this
+      button, otherwise AudioContext that plays the sent and receive sounds will
+      not be played. Click the Escape button if you do not want AudioContext.
+    </button>
+    <main>
+      <iframe id="first" title="first-interlocutor" src="/iframe.html"></iframe>
+      <iframe
+        id="second"
+        title="second-interlocutor"
+        src="/iframe.html"
+      ></iframe>
+    </main>
+    <script>
+      (() => {
+        let audioContext;
+        let sentOscillator;
+        let receiveOscillator;
+
+        const resumeButton = document.getElementById("resume-button");
+        document.addEventListener("keydown", (event) => {
+          if (event.key === "Escape") {
+            resumeButton.remove();
+          }
+        });
+        resumeButton.addEventListener("click", () => {
+          audioContext = new AudioContext();
+          sentOscillator = audioContext.createOscillator();
+          receiveOscillator = audioContext.createOscillator();
+          receiveOscillator.detune.value = 300;
+          sentOscillator.start();
+          receiveOscillator.start();
+          resumeButton.remove();
+        });
+
+        const playSentSound = () => {
+          sentOscillator.connect(audioContext.destination);
+          setTimeout(() => sentOscillator.disconnect(), 50);
+        };
+
+        playReceiveSound = () => {
+          receiveOscillator.connect(audioContext.destination);
+          setTimeout(() => receiveOscillator.disconnect(), 50);
+        };
+
+        const channel = new MessageChannel();
+        const broadcastChannel = new BroadcastChannel("sound-channel");
+        broadcastChannel.addEventListener("message", (message) => {
+          if (message.data === "play-sent-sound") {
+            playSentSound();
+          } else if (message.data === "play-receive-sound") {
+            playReceiveSound();
+          }
+        });
+
+        const { port1, port2 } = channel;
+        const first = document.getElementById("first");
+        first.addEventListener("load", () => {
+          first.contentWindow.postMessage("init", "*", [port1]);
+        });
+        second.addEventListener("load", () => {
+          second.contentWindow.postMessage("init", "*", [port2]);
+        });
+      })();
+    </script>
+  </body>
+</html>

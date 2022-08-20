@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Iframe</title>
+  </head>
+
+  <body>
+    <form>
+      <input
+        id="text-input"
+        type="text"
+        autocomplete="off"
+        placeholder="message"
+      />
+      <button type="submit">Send</button>
+      <button id="mutual-clear-dialog-button" type="button">
+        Clear dialog for both
+      </button>
+    </form>
+    <script>
+      (() => {
+        const SLEEP_TIMEOUT_MILLISECONDS = 500;
+        const broadcastChannel = new BroadcastChannel("sound-channel");
+        document.querySelector("form").addEventListener("submit", (event) => {
+          event.preventDefault();
+          const { value: text } = textInput;
+          port.postMessage(text);
+          const p = document.createElement("p");
+          p.textContent = `Me: ${text}`;
+          document.body.appendChild(p);
+          textInput.value = "";
+          broadcastChannel.postMessage("play-sent-sound");
+        });
+
+        const clearDialog = () => {
+          Array.from(document.querySelectorAll("p")).forEach((p) => p.remove());
+        };
+
+        let port;
+        const mutualClearDialogButton = document.getElementById(
+          "mutual-clear-dialog-button"
+        );
+        const textInput = document.getElementById("text-input");
+
+        mutualClearDialogButton.addEventListener("click", () => {
+          port.postMessage({ action: "mutual-clear-dialog" });
+          clearDialog();
+        });
+        window.addEventListener("message", ({ ports }) => {
+          port = ports[0];
+          port.onmessage = async ({ data }) => {
+            if (data.action) {
+              if (data.action === "mutual-clear-dialog") {
+                clearDialog();
+              }
+              return;
+            }
+
+            await new Promise((resolve) =>
+              setTimeout(resolve, SLEEP_TIMEOUT_MILLISECONDS)
+            );
+
+            const p = document.createElement("p");
+            p.textContent = `Interlocutor: ${data}`;
+            document.body.appendChild(p);
+
+            broadcastChannel.postMessage("play-receive-sound");
+          };
+        });
+      })();
+    </script>
+  </body>
+</html>
